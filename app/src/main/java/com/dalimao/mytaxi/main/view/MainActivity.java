@@ -6,6 +6,8 @@ import android.util.Log;
 
 import com.dalimao.mytaxi.MyTaxiApplication;
 import com.dalimao.mytaxi.R;
+import com.dalimao.mytaxi.account.model.AccountManagerImpl;
+import com.dalimao.mytaxi.account.model.IAccountManager;
 import com.dalimao.mytaxi.account.model.response.Account;
 import com.dalimao.mytaxi.account.model.response.LoginResponse;
 import com.dalimao.mytaxi.account.view.PhoneInputDialog;
@@ -19,6 +21,8 @@ import com.dalimao.mytaxi.common.http.impl.BaseResponse;
 import com.dalimao.mytaxi.common.http.impl.OkHttpClientImpl;
 import com.dalimao.mytaxi.common.storage.SharedPreferencesDao;
 import com.dalimao.mytaxi.common.util.ToastUtil;
+import com.dalimao.mytaxi.main.presenter.IMainPresenter;
+import com.dalimao.mytaxi.main.presenter.MainPresenterImpl;
 import com.google.gson.Gson;
 
 
@@ -36,88 +40,23 @@ import com.google.gson.Gson;
  * ------获取附近司机---
  */
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements IMainView{
 
     private static final String TAG = MainActivity.class.getSimpleName();
-    private IHttpClient mHttpClient;
+    private IMainPresenter mPresenter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        mHttpClient = new OkHttpClientImpl();
-        checkLoginState();
-    }
-
-    /**
-     * 检查用户是否登录
-     */
-    private void checkLoginState() {
-        //获取本地登录信息
-        SharedPreferencesDao dao = new SharedPreferencesDao(MyTaxiApplication.getINSTANCE(),
-                SharedPreferencesDao.FILE_ACCOUNT);
-        final Account account = (Account) dao.get(SharedPreferencesDao.KEY_ACCOUNT, Account.class);
-
-        //登录是否过期
-        boolean tokenValid = false;
-
-        //检查登录是否过期
-        if (account != null) {
-            if (account.getExpired() > System.currentTimeMillis()) {
-                //token有效
-                tokenValid = true;
-            }
-        }
-
-
-        if (!tokenValid) {
-            showPhoneInputDialog();
-        } else {
-            //请求网络，完成自动登录
-            new Thread(){
-                @Override
-                public void run() {
-                    String url = API.Config.getDomain() + API.LOGIN_BY_TOKEN;
-                    IRequest request = new BaseRequest(url);
-                    request.setBody("token",account.getToken());
-                    IResponse response = mHttpClient.post(request, false);
-                    Log.d(TAG, response.getData());
-                    if (response.getCode() == BaseResponse.STATE_OK) {
-                        LoginResponse loginResponse = new Gson().fromJson(response.getData(), LoginResponse.class);
-                        if (loginResponse.getCode() == BaseBizResponse.STATE_OK) {
-                            //保存登录信息
-                            Account account = loginResponse.getData();
-                            //todo:加密存储
-                            SharedPreferencesDao dao = new SharedPreferencesDao(MyTaxiApplication.getINSTANCE(),
-                                    SharedPreferencesDao.FILE_ACCOUNT);
-                            dao.save(SharedPreferencesDao.KEY_ACCOUNT, account);
-                            //通知UI登录成功
-                            MainActivity.this.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    ToastUtil.show(MainActivity.this,getString(R.string.login_suc));
-                                }
-                            });
-                        } else if (loginResponse.getCode() == BaseBizResponse.STATE_TOKEN_INVALID) {
-                            //token过期
-                            MainActivity.this.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    showPhoneInputDialog();
-                                }
-                            });
-                        }
-                    } else {
-                        MainActivity.this.runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                ToastUtil.show(MainActivity.this,getString(R.string.error_server));
-                            }
-                        });
-                    }
-                }
-            }.start();
-        }
+        IHttpClient httpClient = new OkHttpClientImpl();
+        SharedPreferencesDao dao =
+                new SharedPreferencesDao(MyTaxiApplication.getInstance(),
+                        SharedPreferencesDao.FILE_ACCOUNT);
+        IAccountManager accountManager = new AccountManagerImpl(httpClient, dao);
+        mPresenter = new MainPresenterImpl(this, accountManager);
+        //检查用户是否登录
+        mPresenter.loginByToken();
     }
 
 
@@ -127,5 +66,42 @@ public class MainActivity extends AppCompatActivity {
     private void showPhoneInputDialog() {
         PhoneInputDialog phoneInputDialog = new PhoneInputDialog(this);
         phoneInputDialog.show();
+    }
+
+    @Override
+    public void showLoginSuc() {
+        ToastUtil.show(this, getString(R.string.login_suc));
+    }
+
+
+    /**
+     * 显示 loading
+     */
+    @Override
+    public void showLoading() {
+        // TODO: 17/5/14   显示加载框
+    }
+
+    /**
+     * 错误处理
+     *
+     * @param code
+     * @param msg
+     */
+
+    @Override
+    public void showError(int code, String msg) {
+        switch (code) {
+            case IAccountManager.TOKEN_INVALID:
+                // 登录过期
+                ToastUtil.show(this, getString(R.string.token_invalid));
+                showPhoneInputDialog();
+                break;
+            case IAccountManager.SERVER_FAIL:
+                // 服务器错误
+                showPhoneInputDialog();
+                break;
+
+        }
     }
 }

@@ -14,7 +14,7 @@ public class MyTaxiApplication extends Application {
     }
 
 
-    public static MyTaxiApplication getINSTANCE() {
+    public static MyTaxiApplication getInstance() {
         return INSTANCE;
     }
 }
