@@ -11,6 +11,7 @@ import com.dalimao.mytaxi.account.model.IAccountManager;
 import com.dalimao.mytaxi.account.model.response.Account;
 import com.dalimao.mytaxi.account.model.response.LoginResponse;
 import com.dalimao.mytaxi.account.view.PhoneInputDialog;
+import com.dalimao.mytaxi.common.databus.RxBus;
 import com.dalimao.mytaxi.common.http.IHttpClient;
 import com.dalimao.mytaxi.common.http.IRequest;
 import com.dalimao.mytaxi.common.http.IResponse;
@@ -55,6 +56,8 @@ public class MainActivity extends AppCompatActivity implements IMainView{
                         SharedPreferencesDao.FILE_ACCOUNT);
         IAccountManager accountManager = new AccountManagerImpl(httpClient, dao);
         mPresenter = new MainPresenterImpl(this, accountManager);
+        //注册presenter
+        RxBus.getInstance().register(mPresenter);
         //检查用户是否登录
         mPresenter.loginByToken();
     }
@@ -103,5 +106,13 @@ public class MainActivity extends AppCompatActivity implements IMainView{
                 break;
 
         }
+    }
+
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        //注销presenter
+        RxBus.getInstance().unRegister(mPresenter);
     }
 }

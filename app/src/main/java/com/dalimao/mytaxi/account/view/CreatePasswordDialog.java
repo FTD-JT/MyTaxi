@@ -23,6 +23,7 @@ import com.dalimao.mytaxi.account.model.response.Account;
 import com.dalimao.mytaxi.account.model.response.LoginResponse;
 import com.dalimao.mytaxi.account.presenter.CreatePasswordDialogPresenterImpl;
 import com.dalimao.mytaxi.account.presenter.ICreatePasswordDialogPresenter;
+import com.dalimao.mytaxi.common.databus.RxBus;
 import com.dalimao.mytaxi.common.http.IHttpClient;
 import com.dalimao.mytaxi.common.http.IRequest;
 import com.dalimao.mytaxi.common.http.IResponse;
@@ -75,6 +76,17 @@ public class CreatePasswordDialog extends Dialog implements ICreatePasswordDialo
         View root = inflater.inflate(R.layout.dialog_create_pw, null);
         setContentView(root);
         initViews();
+
+        //注册 presenter
+        RxBus.getInstance().register(mPresenter);
+    }
+
+
+    @Override
+    public void dismiss() {
+        super.dismiss();
+        // 注销 presenter
+        RxBus.getInstance().unRegister(mPresenter);
     }
 
     private void initViews() {

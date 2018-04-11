@@ -19,6 +19,7 @@ import com.dalimao.mytaxi.account.model.AccountManagerImpl;
 import com.dalimao.mytaxi.account.model.IAccountManager;
 import com.dalimao.mytaxi.account.presenter.ISmsCodeDialogPresenter;
 import com.dalimao.mytaxi.account.presenter.SmsCodeDialogPresenterImpl;
+import com.dalimao.mytaxi.common.databus.RxBus;
 import com.dalimao.mytaxi.common.http.IHttpClient;
 import com.dalimao.mytaxi.common.http.IRequest;
 import com.dalimao.mytaxi.common.http.IResponse;
@@ -64,6 +65,10 @@ public class SmsCodeDialog extends Dialog implements  ISmsCodeDialogView {
         //设置监听器
         initListeners();
         requestSendSmsCode();
+
+
+        // 注册 Presenter
+        RxBus.getInstance().register(mPresenter);
     }
 
 
@@ -236,6 +241,9 @@ public class SmsCodeDialog extends Dialog implements  ISmsCodeDialogView {
     @Override
     public void dismiss() {
         super.dismiss();
+
+        // 注销 Presenter
+        RxBus.getInstance().unRegister(mPresenter);
     }
 
 }
